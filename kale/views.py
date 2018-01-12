@@ -3,4 +3,4 @@ from django.http import HttpResponse
 
 # Create your views here.
 def index(request):
-    return HttpResponse('get out my way unless you are a seed')
+    return HttpResponse('welcome to Kal, an app for scheduling classes and events')
