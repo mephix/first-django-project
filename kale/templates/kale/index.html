@@ -1,0 +1,20 @@
+welcome to Kal, an app for organizing events
+
+<ul>
+  <li><a href="{% url 'kale:findclass' %}">find a class</a></li>
+  
+  <li><a href="{% url 'kale:kalendar' %}">my kalendar</a></li>
+  
+  
+  {% if user.hasevents %}
+    <li><a href="{% url 'kale:myevents' %}">my events</a></li>
+  {% else %}
+    <li><a href="{% url 'kale:newevent' %}">create an event</a></li>
+  {% endif %}
+  
+  {% if user.hasvenues %}
+    <li><a href="{% url 'kale:myvenues' %}">my venues</a></li>
+  {% else %}
+    <li><a href="{% url 'kale:newvenue' %}">register a venue</a></li>
+  {% endif %}
+</ul>

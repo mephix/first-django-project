@@ -1,28 +1,49 @@
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import Http404
+from .models import TYPE_CHOICES
 
-# Create your views here.
 def index(request):
-    # ... do any python stuff ...
-    
-    # all Django wants finally is this HttpResponse
-    return HttpResponse('welcome to Kal, an app for scheduling classes and events')
+    user = {'hasevents': False, 'hasvenues': False}
+    context = {'user': user}
+    return render(request,'kale/index.html',context)
 
-def whatclass(request):
-    eventchoices = Event.category.choices
-    
-    return HttpResponse(eventchoices)
-    
-#    return HttpResponse('What class do you want to take?')
+def findclass(request):
+    context = {'type_choices': TYPE_CHOICES}
+    # render takes a request object, a template and an optional dictionary
+    return render(request,'kale/findclass.html',context)
     
 def when(request):
-    return HttpResponse('What days and times are you free?')
+    context = {}
+    return render(request,'kale/findclass/when.html',context)
     
 def howmuch(request):
-    return HttpResponse('Whats the maximum you are willing to pay for a class?')
+    context = {}
+    return render(request,'kale/findclass/howmuch.html',context)
     
 def travel(request):
-    return HttpResponse('travel preferences coming soon')
-    
+    context = {}
+    return render(request,'kale/findclass/travel.html',context)
+
 def okcool(request):
-    return HttpResponse('ok cool, we will find a class for you')
+    context = {}
+    return render(request,'kale/findclass/okcool.html',context)
+
+def kalendar(request):
+    context = {}
+    return render(request,'kale/kalendar.html',context)
+
+def myevents(request):
+    context = {}
+    return render(request,'kale/myevents.html',context)
+
+def newevent(request):
+    context = {}
+    return render(request,'kale/newevent.html',context)
+
+def myvenues(request):
+    context = {}
+    return render(request,'kale/myvenues.html',context)
+
+def newvenue(request):
+    context = {}
+    return render(request,'kale/newvenue.html',context)

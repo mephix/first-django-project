@@ -1,0 +1,10 @@
+What class do you want to take?
+{% if type_choices %}
+    <ul>
+    {% for choice in type_choices %}
+        <li><a>{{ choice }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No choices are available.</p>
+{% endif %}

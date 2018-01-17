@@ -72,19 +72,17 @@ class Venue(models.Model):
     
   
 # define this static variable used by the Event and EventRequest classes
-TYPE_CHOICES = (('Yoga','Yoga'),
-                ('Rockclimbing','Rockclimbing'),
-                ('Tango','Tango'),
-                ('Freediving','Freediving'))
+TYPE_CHOICES = ['Yoga','Rockclimbing','Tango','Freediving']
                 
                 
 class Event(models.Model):
     # Example of an event: "Yoga class with Mary (charging $45) in UNSW gym yoga
     # room 2 (charging $20), for up to 20 people, on Fri Jan 12th 3pm for one hour
     
+    
     # Manually set a few different types of events for now.
-    category = models.CharField('type of event',choices=TYPE_CHOICES,default='Yoga',
-                                max_length=200)
+    category = models.CharField('type of event',default='Yoga',max_length=200,
+                                choices=tuple([(y,y) for y in TYPE_CHOICES]))
 
     # Events have a many-to-many relationship with Attendees. A person can attend
     # many events, and an event can have many people attending.
@@ -123,8 +121,8 @@ class EventRequest(models.Model):
     
     # event types are manually defined, there are only a few of them
     # yoga, rockclimbing, tango, freediving
-    category = models.CharField('type of event',choices=TYPE_CHOICES,default='Yoga',
-                                max_length=200)
+    category = models.CharField('type of event',default='Yoga',max_length=200,
+                                choices=tuple([(y,y) for y in TYPE_CHOICES]))
 
     # maximum cost (including travel cost) of the class
     max_cost = models.DecimalField(default=0,max_digits=6,decimal_places=0,
