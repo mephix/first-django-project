@@ -30,24 +30,26 @@ class CalendarSlot(models.Model):
     duration = models.DurationField()
 
     # many calendar slots can be associated with an event request
-    event_request_slots = models.ForeignKey('EventRequest',related_name='event_request',
+    event_request_slots = models.ForeignKey('EventRequest',related_name='calendar_slots',
                                         on_delete=models.CASCADE)
     
     # one calendar slot is associated with an event
-    event_slots = models.OneToOneField('Event',related_name='event',
+    event_slots = models.OneToOneField('Event',related_name='calendar_slots',
                                         on_delete=models.CASCADE)
     
     # one calendar slot is associated with a venue slot
-    venue_slots = models.OneToOneField('VenueSlot',related_name='venue_slot',
+    venue_slots = models.OneToOneField('VenueSlot',related_name='calendar_slots',
                                         on_delete=models.CASCADE)
     
 
 # a VenueSlot is a CalendarSlot plus a price
 class VenueSlot(models.Model):
-    # price is expressed per hour. Note that the calendar_slot can be any amount
-    # of time. So if price_per_hour is 30, and the slot is for 3 hours, then if
-    # this whole slot gets booked, its cost needs to be calculated as 30*3 = 90,
-    # not simply taken as 30
+    """
+    price is expressed per hour. Note that the calendar_slot can be any amount
+    of time. So if price_per_hour is 30, and the slot is for 3 hours, then if
+    this whole slot gets booked, its cost needs to be calculated as 30*3 = 90,
+    not simply taken as 30
+    """
     price_per_hour = models.DecimalField(max_digits=7,decimal_places=5,
                         validators=[MinValueValidator(0),DecimalValidator(7,5)])
                         
@@ -126,8 +128,15 @@ class EventRequest(models.Model):
 
     # maximum cost (including travel cost) of the class
     max_cost = models.DecimalField(default=0,max_digits=6,decimal_places=0,
-                validators=[MinValueValidator(0),DecimalValidator(6,0)])
+                    validators=[MinValueValidator(0),DecimalValidator(6,0)])
+                
+    # cost of time, per minute
+    time_cost = models.DecimalField(default=0,max_digits=5,decimal_places=2,
+                    validators=[MinValueValidator(0),DecimalValidator(5,2)])
+                    
+    # travel options
     
+                
     def __str__(self):
         return self.category
  
