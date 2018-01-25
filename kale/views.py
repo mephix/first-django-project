@@ -1,118 +1,49 @@
 from django.shortcuts import get_object_or_404, render
 from django.http import HttpResponseRedirect, HttpResponse
 from django.urls import reverse
-from .models import TYPE_CHOICES, EventRequest
+from .models import EventRequest, EVENT_TYPES, TRAVEL_TYPES
+from .forms import CalendarSlotForm, EventRequestForm, EventForm, VenueForm, LocationForm
 
 def index(request):
     user = {'hasevents': False, 'hasvenues': False}
     context = {'user': user}
     return render(request,'kale/index.html',context)
-
-def findclass(request):
-    context = {'type_choices': TYPE_CHOICES}
-    # render takes a request object, a template and an optional dictionary
-    return render(request,'kale/findclass.html',context)
-
-# server method to handle the posted data
-def findclass_post(request):
-    try:
-        selected_category = request.POST['choice']
-    except (KeyError):
-        return render(request,'kale/findclass.html', {
-            'type_choices': TYPE_CHOICES,
-            'error_message': "You didn't select a class.",
-        })
-    else:
-        # create a new EventRequest
-        e = EventRequest(category=selected_category)
-
-        # so far we only know the category, not the max_cost or associated
-        # CalendarSlots. we should know the Person but we havent captured
-        # that yet
-        e.save()
-
-        # Always return an HttpResponseRedirect after successfully dealing
-        # with POST data. This prevents data from being posted twice if a
-        # user hits the Back button.
-        return HttpResponseRedirect(reverse('kale:when',args=(e.id,)))
-        
-        
-def when(request, event_request_id):
-    event_request = get_object_or_404(EventRequest,pk=event_request_id)
-    days_of_the_week = ['mon','tue','wed','thu','fri','sat','sun']
-    context = { 'event_request': event_request,
-                'days_of_the_week': days_of_the_week,
-    }
-    return render(request,'kale/when.html',context)
     
-def when_post(request, event_request_id):
-    try:
-        selected_day = request.POST['day']
-    except (KeyError):
-        return render(request,'kale/when.html', {
-            'type_choices': TYPE_CHOICES,
-            'error_message': "You didn't select days",
-        })
+def newclass(request):
+    eventRequestFields = ('event_type','max_cost','travel_types','travel_time_cost')
+    calendarSlotFields = ('start_time','end_time','start_date','repeat','repeat_every',
+                        'repeat_freq','repeat_days','end_type','end_date','n_recurrences')
+    # if method is POST, we need to process the form data that is being posted
+    if request.method == 'POST':
+        # create a form instance and populate it with data from the request
+        eventRequestData = {k: request.POST[k] for k in eventRequestFields}
+        calendarSlotData = {k: request.POST[k] for k in calendarSlotFields}
+        eventRequestForm = EventRequestForm(eventRequestData)
+        # check whether it is valid
+        if eventRequestForm.is_valid():
+            # process the data in cleaned_data as required
+            e = EventRequest(**eventRequestForm.cleaned_data)
+            e.save()
+            
+        # create the associated CalendarSlot
+        calendarSlotForm = CalendarSlotForm(calendarSlotData)
+        if calendarSlotForm.is_valid():
+            c = CalendarSlot(event_request=e,**calendarSlotForm.cleaned_data)
+            c.save()
+
+        # redirect to a new URL
+        return HttpResponseRedirect('kale/index.html')
+
+    # if a GET (or any other) method, create blank forms
     else:
-        e = get_object_or_404(EventRequest,pk=event_request_id)
-        # give the EventRequest associated CalendarSlots
-        # !!! DONT KNOW HOW TO DO THIS YET !!!
-
-        e.save()
-
-        # continue on to next page
-        return HttpResponseRedirect(reverse('kale:howmuch',args=(e.id,)))
+        eventRequestForm = EventRequestForm()
+        calendarSlotForm = CalendarSlotForm()
         
-        
-def howmuch(request, event_request_id):
-    event_request = get_object_or_404(EventRequest,pk=event_request_id)
-    context = {'event_request': event_request}
-    return render(request,'kale/howmuch.html',context)
-
-def howmuch_post(request, event_request_id):
-    try:
-        max_cost = request.POST['max_cost']
-    except (KeyError):
-        return render(request, 'kale/howmuch.html', {
-            'type_choices': TYPE_CHOICES,
-            'error_message': "You didn't select the maximum you are willing to pay",
-        })
-    else:
-        e = get_object_or_404(EventRequest,pk=event_request_id)
-        e.max_cost = max_cost
-        e.save()
-
-        # continue on to next page
-        return HttpResponseRedirect(reverse('kale:travel',args=(e.id,)))
-        
-        
-def travel(request, event_request_id):
-    event_request = get_object_or_404(EventRequest,pk=event_request_id)
-    context = {'event_request': event_request}
-    return render(request,'kale/travel.html',context)
-
-
-def travel_post(request, event_request_id):
-    try:
-        travel_cost = request.POST['travel_cost']
-    except (KeyError):
-        return render(request,'kale/travel.html', {
-            'type_choices': TYPE_CHOICES,
-            'error_message': "You didn't select your cost of travel time",
-        })
-    else:
-        e = get_object_or_404(EventRequest,pk=event_request_id)
-        e.travel_cost = travel_cost
-        e.save()
-
-        # continue on to next page
-        return HttpResponseRedirect(reverse('kale:okcool',args=(e.id,)))
-        
-
-def okcool(request, event_request_id):
-    event_request = get_object_or_404(EventRequest,pk=event_request_id)
-    context = {'event_request': event_request}
-    return render(request,'kale/okcool.html'    ,context)
+    # if GET method or the form was not valid, it will be blank now
+    return render(request, 'kale/newclass.html', {'eventRequestForm': eventRequestForm,
+                                                  'calendarSlotForm': calendarSlotForm,}
+    )
+    
 
 def kalendar(request):
     context = {}
@@ -123,13 +54,77 @@ def myevents(request):
     return render(request,'kale/myevents.html',context)
 
 def newevent(request):
-    context = {}
-    return render(request,'kale/newevent.html',context)
+    eventFields = ('event_type','organizer_fee','min_people','max_people')
+    calendarSlotFields = ('start_time','end_time','start_date','repeat','repeat_every',
+                          'repeat_freq','repeat_days','end_type','end_date','n_recurrences')
+    # if method is POST, we need to process the form data that is being posted
+    if request.method == 'POST':
+        # create a form instance and populate it with data from the request
+        eventData = {k: request.POST[k] for k in eventFields}
+        calendarSlotData = {k: request.POST[k] for k in calendarSlotFields}
+        eventForm = EventForm(eventData)
+        # check whether it is valid
+        if eventForm.is_valid():
+            # process the data in form.cleaned_data as required
+            e = Event(**eventForm.cleaned_data)
+            e.save()
+            
+        # create the associated CalendarSlot
+        calendarSlotForm = CalendarSlotForm(calendarSlotData)
+        if calendarSlotForm.is_valid():
+            c = CalendarSlot(event=e,**calendarSlotForm.cleaned_data)
+            c.save()
+
+        # redirect to a new URL
+        return HttpResponseRedirect('kale/index.html')
+
+    # if a GET (or any other) method, create blank forms
+    else:
+        eventForm = EventForm()
+        calendarSlotForm = CalendarSlotForm()
+        
+    # if GET method or the form was not valid, it will be blank now
+    return render(request, 'kale/newevent.html', {'eventForm': eventForm,
+                                                  'calendarSlotForm': calendarSlotForm,}
+    )
 
 def myvenues(request):
     context = {}
     return render(request,'kale/myvenues.html',context)
 
 def newvenue(request):
-    context = {}
-    return render(request,'kale/newvenue.html',context)
+    venueFields = ('name','location','capacity','cost_per_hour')
+    locationFields = ('latitude','longitude')
+
+    # if method is POST, we need to process the form data that is being posted
+    if request.method == 'POST':
+        # create a form instance and populate it with data from the request
+        venueData = {k: request.POST[k] for k in venueFields}
+        locationData = {k: request.POST[k] for k in locationFields}
+        venueForm = VenueForm(venueData)
+        locationForm = LocationForm(locationData)
+
+        # create the Location
+        locationForm = LocationForm(locationData)
+        if locationForm.is_valid():
+            l = Location(**locationForm.cleaned_data)
+            l.save()
+
+        # create the Venue
+        if venueForm.is_valid():
+            # process the data in form.cleaned_data as required
+            v = Venue(location=l,**venueForm.cleaned_data)
+            v.save()
+            
+        # redirect to a new URL
+        return HttpResponseRedirect('kale/index.html')
+
+    # if a GET (or any other) method, create blank forms
+    else:
+        venueForm = VenueForm()
+        locationForm = LocationForm()
+        
+    # if GET method or the form was not valid, it will be blank now
+    return render(request, 'kale/newvenue.html', {'venueForm': venueForm,
+                                                  'locationForm': locationForm,}
+    )

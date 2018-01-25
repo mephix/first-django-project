@@ -22,42 +22,47 @@ class Location(models.Model):
                     validators=[MaxValueValidator(180),MinValueValidator(-180),
                                 DecimalValidator(8,5),])
 
-# a CalendarSlot has a starting point and a duration
-# CalendarSlots cannot be recurring: multiple slots will have to be created to
-# represent a recurring slot
+# a CalendarSlot has a starting point and a duration, and can be recurring
 class CalendarSlot(models.Model):
-    startDateTime = models.DateTimeField()
-    duration = models.DurationField()
+    
+    start_time = models.TimeField(verbose_name='from')
+    end_time = models.TimeField(verbose_name='to',null=True)
+    start_date = models.DateField(verbose_name='starting')
+    repeat = models.BooleanField(verbose_name='repeat',default=False)
+    repeat_every = models.IntegerField(verbose_name='every') #,min_value=1,max_value=999)
+    REPEATFREQS = ['days','weeks']
+    # repeat_freq = models.ChoiceField(choices=tuple([(y,y) for y in REPEATFREQS]))
+    repeat_freq = models.CharField(default='weeks',max_length=200,
+                                choices=tuple([(y,y) for y in REPEATFREQS]))
 
+    REPEATDAYS = [('Monday','M'),
+                  ('Tuesday','T'),
+                  ('Wednesday','W'),
+                  ('Thursday','T'),
+                  ('Friday','F'),
+                  ('Saturday','S'),
+                  ('Sunday','S'),
+                  ]
+    repeat_days = models.CharField(choices=REPEATDAYS,max_length=200,)
+
+    end_type = models.CharField(max_length=200,
+                                choices=tuple([(y,y) for y in ['never','on','after']]))
+    end_date = models.DateField(verbose_name='ending',blank=True,null=True)
+    n_recurrences = models.IntegerField(verbose_name='recurrences')
+    
     # many calendar slots can be associated with an event request
-    event_request_slots = models.ForeignKey('EventRequest',related_name='calendar_slots',
+    event_request = models.ForeignKey('EventRequest',related_name='calendar_slots',
                                         on_delete=models.CASCADE)
     
     # one calendar slot is associated with an event
-    event_slots = models.OneToOneField('Event',related_name='calendar_slots',
+    event = models.OneToOneField('Event',related_name='calendar_slot',
                                         on_delete=models.CASCADE)
     
     # one calendar slot is associated with a venue slot
-    venue_slots = models.OneToOneField('VenueSlot',related_name='calendar_slots',
+    venue = models.OneToOneField('Venue',related_name='calendar_slot',
                                         on_delete=models.CASCADE)
-    
 
-# a VenueSlot is a CalendarSlot plus a price
-class VenueSlot(models.Model):
-    """
-    price is expressed per hour. Note that the calendar_slot can be any amount
-    of time. So if price_per_hour is 30, and the slot is for 3 hours, then if
-    this whole slot gets booked, its cost needs to be calculated as 30*3 = 90,
-    not simply taken as 30
-    """
-    price_per_hour = models.DecimalField(max_digits=7,decimal_places=5,
-                        validators=[MinValueValidator(0),DecimalValidator(7,5)])
-                        
-    # many VenueSlots are associated with a Venue
-    venue = models.ForeignKey('Venue',related_name='venue',
-                                on_delete=models.CASCADE)
 
-    
 class Venue(models.Model):
     # Example of a venue: "UNSW Gym Yoga room 2, capacity 25 people, available
     # for rent by the general public Mon and Wed afternoons 2-5pm for $30ph"
@@ -67,14 +72,16 @@ class Venue(models.Model):
     
     capacity = models.PositiveIntegerField(default=0)
 
+    cost_per_hour = models.DecimalField(max_digits=7,decimal_places=5,
+                        validators=[MinValueValidator(0),DecimalValidator(7,5)])
+                        
     def __str__(self):
         return self.name
  
-    # see VenueSlots for availability
-    
-  
-# define this static variable used by the Event and EventRequest classes
-TYPE_CHOICES = ['Yoga','Rockclimbing','Tango','Freediving']
+
+# define static variables used by the Event and EventRequest classes
+EVENT_TYPES = ['Yoga','Rockclimbing','Tango','Freediving']
+TRAVEL_TYPES = ['Rideshare','Walk','Cycle','Public Transport','Drive']
                 
                 
 class Event(models.Model):
@@ -83,8 +90,8 @@ class Event(models.Model):
     
     
     # Manually set a few different types of events for now.
-    category = models.CharField('type of event',default='Yoga',max_length=200,
-                                choices=tuple([(y,y) for y in TYPE_CHOICES]))
+    event_type = models.CharField('type of event',default='Yoga',max_length=200,
+                                choices=tuple([(y,y) for y in EVENT_TYPES]))
 
     # Events have a many-to-many relationship with Attendees. A person can attend
     # many events, and an event can have many people attending.
@@ -110,7 +117,7 @@ class Event(models.Model):
     max_people = models.PositiveIntegerField(default=100)
 
     def __str__(self):
-        return self.category
+        return self.event_type
  
 
 class EventRequest(models.Model):
@@ -123,20 +130,24 @@ class EventRequest(models.Model):
     
     # event types are manually defined, there are only a few of them
     # yoga, rockclimbing, tango, freediving
-    category = models.CharField('type of event',default='Yoga',max_length=200,
-                                choices=tuple([(y,y) for y in TYPE_CHOICES]))
+    event_type = models.CharField('type of event',default='Yoga',blank=False,max_length=200,
+                                choices=tuple([(y,y) for y in EVENT_TYPES]))
 
     # maximum cost (including travel cost) of the class
-    max_cost = models.DecimalField(default=0,max_digits=6,decimal_places=0,
+    max_cost = models.DecimalField('maximum cost of the event (including travelling)',
+                    default=0,max_digits=6,decimal_places=0,
                     validators=[MinValueValidator(0),DecimalValidator(6,0)])
                 
-    # cost of time, per minute
-    time_cost = models.DecimalField(default=0,max_digits=5,decimal_places=2,
-                    validators=[MinValueValidator(0),DecimalValidator(5,2)])
-                    
     # travel options
+    travel_types = models.CharField('travel options',default='Rideshare',max_length=200,
+                                choices=tuple([(y,y) for y in TRAVEL_TYPES]))
     
+    # cost of time, per minute
+    travel_time_cost = models.DecimalField('cost of time spent travelling (in mins)',
+                                default=0,max_digits=5,decimal_places=2,
+                                validators=[MinValueValidator(0),DecimalValidator(5,2)])
+                    
                 
     def __str__(self):
-        return self.category
+        return self.event_type
  
